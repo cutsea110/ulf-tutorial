@@ -127,3 +127,4 @@ lookup : {A : Set} (xs : List A)(n : ℕ) → Maybe A
 lookup xs n with xs ! n
 lookup xs .(index p) | inside x p = just x
 lookup xs .(length xs + m) | outside m = nothing
+
