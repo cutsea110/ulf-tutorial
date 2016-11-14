@@ -1,6 +1,6 @@
 module View where
 
-open import Data.Nat
+open import Data.Nat hiding (erase)
 
 data Parity : ℕ → Set where
   even : (k : ℕ) → Parity (k * 2)
@@ -127,4 +127,61 @@ lookup : {A : Set} (xs : List A)(n : ℕ) → Maybe A
 lookup xs n with xs ! n
 lookup xs .(index p) | inside x p = just x
 lookup xs .(length xs + m) | outside m = nothing
+
+infixr 30 _⇒_
+data Type : Set where
+  ι : Type
+  _⇒_ : Type → Type → Type
+
+data Equal? : Type → Type → Set where
+  yes : ∀ {τ} → Equal? τ τ
+  no : ∀ {σ τ} → Equal? σ τ
+
+_=?=_ : (σ τ : Type) → Equal? σ τ
+ι =?= ι = yes
+ι =?= (y ⇒ y₁) = no
+(σ ⇒ τ) =?= ι = no
+(σ₁ ⇒ τ₁) =?= (σ₂ ⇒ τ₂) with σ₁ =?= σ₂ | τ₁ =?= τ₂
+(σ₂ ⇒ τ₂) =?= (.σ₂ ⇒ .τ₂) | yes | yes = yes
+(σ₂ ⇒ τ₁) =?= (.σ₂ ⇒ τ₂) | yes | no = no
+(σ₁ ⇒ τ₂) =?= (σ₂ ⇒ .τ₂) | no | yes = no
+(σ₁ ⇒ τ₁) =?= (σ₂ ⇒ τ₂) | no | no = no
+
+Cxt = List Type
+
+infixl 80 _$_
+data Raw : Set where
+  var : ℕ → Raw
+  _$_ : Raw → Raw → Raw
+  lam : Type → Raw → Raw
+
+data Term (Γ : Cxt) : Type → Set where
+  var : ∀ {τ} → τ ∈ Γ → Term Γ τ
+  _$_ : ∀ {σ τ} → Term Γ (σ ⇒ τ) → Term Γ σ → Term Γ τ
+  lam : ∀ σ {τ} → Term (σ ∷ Γ) τ → Term Γ (σ ⇒ τ)
+
+erase : ∀ {Γ τ} → Term Γ τ → Raw
+erase (var x) = var (index x)
+erase (t $ u) = erase t $ erase u
+erase (lam σ t) = lam σ (erase t)
+
+data Infer (Γ : Cxt) : Raw → Set where
+  ok : (τ : Type) (t : Term Γ τ) → Infer Γ (erase t)
+  bad : {e : Raw} → Infer Γ e
+
+infer : (Γ : Cxt) → (e : Raw) → Infer Γ e
+infer Γ (var n) with Γ ! n
+infer Γ (var .(index σ∈Γ)) | inside σ σ∈Γ = ok σ (var σ∈Γ)
+infer Γ (var .(length Γ + m)) | outside m = bad
+infer Γ (e₁ $ e₂) with infer Γ e₁
+infer Γ (e₁ $ e₂) | bad = bad
+infer Γ (.(erase t) $ e₂) | ok ι t = bad
+infer Γ (.(erase t) $ e₂) | ok (σ ⇒ τ) t with infer Γ e₂
+infer Γ (.(erase t) $ e₂) | ok (σ ⇒ τ) t | bad = bad
+infer Γ (.(erase t) $ .(erase t₁)) | ok (σ ⇒ τ) t | ok σ' t₁ with σ =?= σ'
+infer Γ (.(erase t) $ .(erase t₁)) | ok (σ ⇒ τ) t | ok σ' t₁ | no = bad
+infer Γ (.(erase t) $ .(erase t₁)) | ok (σ' ⇒ τ) t | ok .σ' t₁ | yes = ok τ (t $ t₁)
+infer Γ (lam σ e) with infer (σ ∷ Γ) e
+infer Γ (lam σ e) | bad = bad
+infer Γ (lam σ .(erase t)) | ok τ t = ok (σ ⇒ τ) (lam σ t)
 
