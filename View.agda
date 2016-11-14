@@ -185,3 +185,46 @@ infer Γ (lam σ e) with infer (σ ∷ Γ) e
 infer Γ (lam σ e) | bad = bad
 infer Γ (lam σ .(erase t)) | ok τ t = ok (σ ⇒ τ) (lam σ t)
 
+
+-- foo = infer (ι ⇒ ι ∷ []) (var 0)
+
+-- bar = infer [] (lam (ι ⇒ ι) (lam ι (var 1 $ var 0)))
+
+k : Raw
+k = lam ι (lam ι (var 1))
+
+s : Raw
+s = lam (ι ⇒ ι ⇒ ι) (lam (ι ⇒ ι) (lam ι ((var 2 $ var 0) $ (var 1 $ var 0))))
+
+b : Raw
+b = lam (ι ⇒ ι) (lam (ι ⇒ ι) (lam ι (var 2 $ (var 1 $ var 0))))
+
+inferB : Infer [] b
+inferB = infer [] b
+
+inferK : Infer [] k
+inferK = infer [] k
+
+inferS : Infer [] s
+inferS = infer [] s
+
+
+data Compare : ℕ → ℕ → Set where
+  less : ∀ {n} k → Compare n (n + suc k)
+  more : ∀ {n} k → Compare (n + suc k) n
+  same : ∀ {n} → Compare n n
+
+comp : (n m : ℕ) → Compare n m
+comp zero zero = same
+comp (suc n) zero = more n
+comp zero (suc m) = less m
+comp (suc n) (suc m) with comp n m
+comp (suc n) (suc .(n + suc k)) | less k = less k
+comp (suc .(m + suc k)) (suc m) | more k = more k
+comp (suc m) (suc .m) | same = same
+
+diff : ℕ → ℕ → ℕ
+diff n m with comp n m
+diff n .(n + suc k) | less k = k
+diff .(m + suc k) m | more k = k
+diff m .m | same = zero
