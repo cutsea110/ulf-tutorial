@@ -47,7 +47,7 @@ diff m .m | same = zero
 
 
 ----------
-open import Data.List
+open import Data.List hiding (lookup)
 open import Data.Empty using (⊥)
 open import Data.Unit using (⊤; tt)
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
