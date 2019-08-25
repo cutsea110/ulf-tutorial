@@ -1,6 +1,6 @@
 module View where
 
-open import Data.Nat hiding (erase)
+open import Data.Nat
 
 data Parity : ℕ → Set where
   even : (k : ℕ) → Parity (k * 2)
